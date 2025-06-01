@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useSupabase } from '../utils/supabase';
 
@@ -8,11 +8,18 @@ type AuthState = {
   isLoading: boolean;
   isAuthenticated: boolean;
   userRole: string | null;
+  signOut: () => Promise<void>;
 };
 
-export function useAuth() {
+const AuthContext = createContext<AuthState | undefined>(undefined);
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const { supabase, session: initialSession } = useSupabase();
-  const [authState, setAuthState] = useState<AuthState>({
+  const [authState, setAuthState] = useState<Omit<AuthState, 'signOut'>>({
     user: initialSession?.user || null,
     session: initialSession,
     isLoading: !initialSession, // If we have initial session, don't load
@@ -23,7 +30,7 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    console.log('Auth hook mounted, initial session:', !!initialSession);
+    console.log('Auth provider mounted, initial session:', !!initialSession);
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -144,5 +151,22 @@ export function useAuth() {
     }
   };
 
-  return { ...authState, signOut };
+  const contextValue = useMemo(() => ({
+    ...authState,
+    signOut
+  }), [authState]);
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+} 

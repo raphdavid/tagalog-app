@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, AlertCircle } from 'lucide-react';
-import { useSubscription } from '../hooks/useSubscription';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useStripe } from '../hooks/useStripe';
 
 const SubscribePage = () => {
@@ -14,8 +14,38 @@ const SubscribePage = () => {
     } catch (err) {
       // Error is handled by useStripe hook
       console.error('Subscription error:', err);
+      // Don't leave the user hanging - the error state will show them what happened
     }
   };
+
+  const isDemoMode = !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
+
+  if (isDemoMode && error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Premium Membership</h1>
+          <p className="text-gray-600 mt-2">
+            Unlock the full potential of your Tagalog learning journey
+          </p>
+        </div>
+        
+        <div className="max-w-lg mx-auto bg-accent-blue-light rounded-lg p-6 text-center">
+          <h2 className="text-xl font-semibold mb-4">Demo Mode</h2>
+          <p className="text-gray-700 mb-4">
+            This is a demo version of the app. Payment processing is not available in demo mode.
+          </p>
+          <p className="text-sm text-gray-600">
+            In a production environment, this would redirect you to Stripe for secure payment processing.
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
 
   const premiumPlan = {
     id: 'premium',

@@ -5,8 +5,8 @@ import {
   BookOpen, Home, BookOpen as Book, Award, Settings, 
   LogOut, Menu, X, UserCircle, CreditCard
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useSubscription } from '../../hooks/useSubscription';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 const DashboardLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

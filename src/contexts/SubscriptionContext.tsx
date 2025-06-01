@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useSupabase } from '../utils/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './AuthContext';
 
 export type SubscriptionTier = 'free' | 'basic' | 'premium';
 
-export function useSubscription() {
+type SubscriptionState = {
+  tier: SubscriptionTier;
+  isLoading: boolean;
+};
+
+const SubscriptionContext = createContext<SubscriptionState | undefined>(undefined);
+
+interface SubscriptionProviderProps {
+  children: ReactNode;
+}
+
+export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   const { user } = useAuth();
   const { supabase } = useSupabase();
   const [tier, setTier] = useState<SubscriptionTier>('free'); // Default to free
@@ -45,8 +56,17 @@ export function useSubscription() {
     getSubscriptionStatus();
   }, [user, supabase]);
 
-  return {
-    tier,
-    isLoading
-  };
+  return (
+    <SubscriptionContext.Provider value={{ tier, isLoading }}>
+      {children}
+    </SubscriptionContext.Provider>
+  );
 }
+
+export function useSubscription() {
+  const context = useContext(SubscriptionContext);
+  if (context === undefined) {
+    throw new Error('useSubscription must be used within a SubscriptionProvider');
+  }
+  return context;
+} 

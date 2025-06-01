@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '../hooks/useAuth';
-import { useSubscription } from '../hooks/useSubscription';
+import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { 
   BookOpen, Award, Clock, BarChart2, AlertCircle,
@@ -17,21 +17,25 @@ const Dashboard = () => {
   const { fetchLessons } = useCurriculum();
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
   
-  // Fetch recent lessons with vocabulary
+  // Don't block rendering on recent lessons loading
   useEffect(() => {
     const loadRecentLessons = async () => {
       try {
-        // Fetch lessons from first two units as recent content
+        console.log('Loading recent lessons...');
         const unit1Lessons = await fetchLessons(1);
         const unit2Lessons = await fetchLessons(2);
         const vocabularyLessons = [...unit1Lessons, ...unit2Lessons]
           .filter(lesson => lesson.type === 'vocabulary')
-          .slice(0, 4); // Show only 4 recent lessons
+          .slice(0, 4);
         setRecentLessons(vocabularyLessons);
+        console.log('Recent lessons loaded:', vocabularyLessons.length);
       } catch (error) {
         console.error('Error loading recent lessons:', error);
+        // Don't let this error block the dashboard
       }
     };
+    
+    // Load recent lessons for flashcard recommendations
     loadRecentLessons();
   }, [fetchLessons]);
 
@@ -55,7 +59,7 @@ const Dashboard = () => {
   ];
   
   const nextUnit = units.find(unit => unit.progress < 100) || units[0];
-  const nextLesson = nextUnit?.lessonsCompleted + 1 || 1;
+  const nextLessonId = recentLessons.length > 0 ? recentLessons[0].id : 1;
 
   return (
     <motion.div
@@ -188,7 +192,7 @@ const Dashboard = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
-            to={`/flashcards/${nextUnit?.id || 1}`}
+            to={`/flashcards/${nextLessonId}`}
             className="card p-6 hover:bg-gray-50 transition-colors group"
           >
             <div className="flex items-center gap-4">
@@ -298,14 +302,14 @@ const Dashboard = () => {
             
             <div className="flex gap-3">
               <Link 
-                to={`/flashcards/${nextLesson}`}
+                to={`/flashcards/${nextLessonId}`}
                 className="btn-secondary flex items-center gap-2"
               >
                 <TarsierIcon size={16} className="text-primary-600" />
                 Flashcards
               </Link>
               <Link 
-                to={`/lesson/${nextLesson}`} 
+                to={`/lesson/${nextLessonId}`} 
                 className="btn-primary"
               >
                 Continue Lesson

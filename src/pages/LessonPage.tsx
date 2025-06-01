@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Award, Loader2 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { Question as QuestionType, Lesson } from '../types/curriculum';
 import { QuestionCard } from '../components/curriculum/QuestionCard';

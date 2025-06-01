@@ -19,11 +19,12 @@ import FlashcardGamePage from './pages/FlashcardGamePage';
 
 // Context & Utils
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { useAuth } from './hooks/useAuth';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
   const { isLoading } = useAuth();
 
+  console.log(isLoading);
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-accent-neutral">
@@ -49,7 +50,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/unit/:id" element={<UnitPage />} />
           <Route path="/lesson/:id" element={<LessonPage />} />
-          <Route path="/flashcards/:id" element={<FlashcardGamePage />} />
+          <Route path="/flashcards/:lessonId" element={<FlashcardGamePage />} />
           <Route path="/subscribe" element={<SubscribePage />} />
         </Route>
 

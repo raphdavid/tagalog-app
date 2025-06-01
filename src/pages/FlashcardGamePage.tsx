@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Award, Loader2 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { Question, Lesson } from '../types/curriculum';
 import { Flashcard } from '../components/curriculum/Flashcard';
 
 const FlashcardGamePage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { fetchLesson, saveProgress, saveAnswer } = useCurriculum();
@@ -22,67 +22,135 @@ const FlashcardGamePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
 
+  // Fallback data if database isn't available
+  const mockVocabulary = [
+    { id: 1, question: "Hello", correct_answer: "Kumusta", type: "vocabulary" },
+    { id: 2, question: "Thank you", correct_answer: "Salamat", type: "vocabulary" },
+    { id: 3, question: "Good morning", correct_answer: "Magandang umaga", type: "vocabulary" },
+    { id: 4, question: "Yes", correct_answer: "Oo", type: "vocabulary" },
+    { id: 5, question: "No", correct_answer: "Hindi", type: "vocabulary" },
+  ];
+
   useEffect(() => {
     const loadLesson = async () => {
-      if (!id) return;
+      if (!lessonId) return;
       
       try {
         setIsLoading(true);
-        const { lesson: lessonData, questions: questionData } = await fetchLesson(parseInt(id, 10));
-        // Filter only vocabulary questions
+        setError(null);
+        
+        console.log('Loading lesson with ID:', lessonId);
+        
+        const { lesson: lessonData, questions: questionData } = await fetchLesson(parseInt(lessonId, 10));
+        
+        console.log('Lesson data:', lessonData);
+        console.log('Questions data:', questionData);
+        
         const vocabularyQuestions = questionData.filter(q => q.type === 'vocabulary');
+        
         setLesson(lessonData);
         setQuestions(vocabularyQuestions);
       } catch (err: any) {
-        setError(err.message);
+        console.error('Error loading lesson:', err);
+        console.log('Using fallback vocabulary data');
+        
+        // Use fallback data
+        setLesson({
+          id: parseInt(lessonId, 10),
+          unit_id: 1,
+          title: "Basic Vocabulary",
+          description: "Learn essential Tagalog words",
+          order: 1,
+          type: "vocabulary",
+          is_premium: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        setQuestions(mockVocabulary as any);
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.log('Lesson loading timed out, using fallback data');
+        setLesson({
+          id: parseInt(lessonId || '1', 10),
+          unit_id: 1,
+          title: "Basic Vocabulary",
+          description: "Learn essential Tagalog words",
+          order: 1,
+          type: "vocabulary",
+          is_premium: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        setQuestions(mockVocabulary as any);
+        setIsLoading(false);
+      }
+    }, 3000); // Reduced to 3 seconds
+
     loadLesson();
-  }, [id, fetchLesson]);
+
+    return () => clearTimeout(timeoutId);
+  }, [lessonId]); // Removed fetchLesson dependency to prevent infinite loop
 
   const handleReveal = () => {
     setIsRevealed(true);
   };
 
   const handleRate = async (isCorrect: boolean) => {
-    if (!user || !lesson) return;
+    console.log('Handle rate called:', isCorrect);
+    
+    if (!lesson) return;
 
-    try {
-      const currentQuestion = questions[currentIndex];
-      
-      // Save the answer
-      await saveAnswer(
-        user.id,
-        currentQuestion.id,
-        currentQuestion.correct_answer,
-        isCorrect
-      );
+    // Update local state immediately (don't wait for database)
+    setScores(prev => ({
+      ...prev,
+      [currentIndex]: isCorrect
+    }));
 
-      // Update local state
-      setScores(prev => ({
-        ...prev,
-        [currentIndex]: isCorrect
-      }));
-
-      // If this was the last question, save progress
-      if (currentIndex === questions.length - 1) {
-        const correctAnswers = Object.values(scores).filter(Boolean).length + (isCorrect ? 1 : 0);
-        const score = Math.round((correctAnswers / questions.length) * 100);
+    // Try to save to database if user exists, but don't block on it
+    if (user) {
+      try {
+        const currentQuestion = questions[currentIndex];
         
-        await saveProgress(user.id, lesson.id, score);
-        setTimeout(() => setShowCelebration(true), 1000);
-      } else {
-        // Move to next question after a short delay
-        setTimeout(() => {
-          setCurrentIndex(prev => prev + 1);
-          setIsRevealed(false);
-        }, 1500);
+        // Try to save the answer (but don't wait or block on failure)
+        saveAnswer(
+          user.id,
+          currentQuestion.id,
+          currentQuestion.correct_answer,
+          isCorrect
+        ).catch(error => {
+          console.warn('Could not save answer to database:', error);
+        });
+
+        // If this is the last question, try to save progress
+        if (currentIndex === questions.length - 1) {
+          const correctAnswers = Object.values(scores).filter(Boolean).length + (isCorrect ? 1 : 0);
+          const score = Math.round((correctAnswers / questions.length) * 100);
+          
+          saveProgress(user.id, lesson.id, score).catch(error => {
+            console.warn('Could not save progress to database:', error);
+          });
+        }
+      } catch (err) {
+        console.warn('Database operations failed:', err);
       }
-    } catch (err) {
-      console.error('Error saving answer:', err);
+    }
+
+    // Handle UI transitions
+    if (currentIndex === questions.length - 1) {
+      // Show celebration after a short delay
+      setTimeout(() => setShowCelebration(true), 1000);
+    } else {
+      // Move to next question after a short delay
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setIsRevealed(false);
+      }, 1500);
     }
   };
 

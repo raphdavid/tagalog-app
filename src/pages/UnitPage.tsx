@@ -5,7 +5,7 @@ import {
   BookOpen, Check, Lock, PlayCircle, MessageCircle, 
   ClipboardList, Music, Lightbulb, Loader2
 } from 'lucide-react';
-import { useSubscription } from '../hooks/useSubscription';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { useUserProgress } from '../hooks/useUserProgress';
 import { Lesson } from '../types/curriculum';

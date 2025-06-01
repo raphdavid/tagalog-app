@@ -4,12 +4,18 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 import { SupabaseProvider } from './utils/supabase';
+import { AuthProvider } from './contexts/AuthContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <SupabaseProvider>
-        <App />
+        <AuthProvider>
+          <SubscriptionProvider>
+            <App />
+          </SubscriptionProvider>
+        </AuthProvider>
       </SupabaseProvider>
     </BrowserRouter>
   </StrictMode>
